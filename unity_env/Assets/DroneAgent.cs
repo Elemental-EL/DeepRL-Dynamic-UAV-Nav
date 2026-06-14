@@ -12,6 +12,8 @@ public class DroneAgent : Agent
     public Transform target; // The survivor / goal
     public Transform arenaCenter; // For bounding out-of-bounds checks
 
+    private float previousDistance;
+
     public override void Initialize()
     {
         rb = GetComponent<Rigidbody>();
@@ -45,6 +47,22 @@ public class DroneAgent : Agent
 
         // Pass actions to the physics engine
         droneDynamics.ApplyControlInputs(thrust, pitch, yaw, roll);
+
+        // Existential Penalty
+        // Encourages the drone to reach the target quickly.
+        AddReward(-1f / MaxStep);
+
+        // Distance Delta
+        float currentDistance = Vector3.Distance(transform.position, target.position);
+        float distanceDelta = previousDistance - currentDistance;
+        AddReward(distanceDelta * 0.1f); // 0.1f == tuning weight
+
+        // Stability Penalty
+        // Penalizes high angular velocity so the drone doesn't spin erratically
+        float spinMagnitude = rb.angularVelocity.magnitude;
+        AddReward(-spinMagnitude * 0.01f);
+
+        previousDistance = currentDistance;
     }
 
     public override void Heuristic(in ActionBuffers actionsOut)
@@ -66,5 +84,27 @@ public class DroneAgent : Agent
 
         // Randomize target position within the arena boundary
         target.localPosition = new Vector3(Random.Range(-20f, 20f), 2f, Random.Range(-20f, 20f));
+
+        // Initialize distance tracker
+        previousDistance = Vector3.Distance(transform.position, target.position);
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        // If it hits the floor, walls, or debris
+        if (collision.gameObject.CompareTag("Wall") || collision.gameObject.CompareTag("Hazard"))
+        {
+            SetReward(-1.0f); // Penalty for crashing
+            EndEpisode();
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Target"))
+        {
+            SetReward(1.0f); // Reward for success
+            EndEpisode();
+        }
     }
 }

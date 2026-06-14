@@ -18,20 +18,17 @@ public class DroneDynamics : MonoBehaviour
         rb.angularDamping = 2.0f; // Dampens erratic spinning
     }
 
-    /// <summary>
-    /// Translates normalized continuous actions [-1, 1] from the RL policy into physical forces.
-    /// </summary>
+    // Translates normalized continuous actions [-1, 1] from the RL policy into physical forces.
     public void ApplyControlInputs(float thrust, float pitch, float yaw, float roll)
     {
-        // 1. Calculate baseline force required to counteract gravity
+        // Calculate baseline force required to counteract gravity
         float hoverForce = rb.mass * Mathf.Abs(Physics.gravity.y);
 
-        // 2. Apply vertical thrust vector
+        // Apply vertical thrust vector
         Vector3 verticalThrust = Vector3.up * (hoverForce + (thrust * thrustMultiplier));
         rb.AddRelativeForce(verticalThrust, ForceMode.Force);
 
-        // 3. Apply rotational torques (Pitch: X-axis, Yaw: Y-axis, Roll: Z-axis)
-        // Roll is inverted natively in Unity to match right-hand flight dynamics
+        // Apply rotational torques (Pitch: X-axis, Yaw: Y-axis, Roll: Z-axis)
         Vector3 rotationalTorque = new Vector3(pitch, yaw, -roll) * rotationMultiplier;
         rb.AddRelativeTorque(rotationalTorque, ForceMode.Force);
     }
