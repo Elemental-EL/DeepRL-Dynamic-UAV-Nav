@@ -7,6 +7,7 @@ public class DroneAgent : Agent
 {
     private Rigidbody rb;
     private DroneDynamics droneDynamics;
+    public ArenaManager arenaManager;
 
     [Header("Target Parameters")]
     public Transform target; // The survivor / goal
@@ -82,8 +83,11 @@ public class DroneAgent : Agent
         transform.localPosition = new Vector3(0, 2f, 0); // Reset above floor level
         transform.rotation = Quaternion.identity;
 
-        // Randomize target position within the arena boundary
-        target.localPosition = new Vector3(Random.Range(-20f, 20f), 2f, Random.Range(-20f, 20f));
+        // Trigger procedural domain randomization
+        if (arenaManager != null)
+        {
+            arenaManager.RandomizeEnvironment();
+        }
 
         // Initialize distance tracker
         previousDistance = Vector3.Distance(transform.position, target.position);
@@ -103,8 +107,20 @@ public class DroneAgent : Agent
     {
         if (other.CompareTag("Target"))
         {
-            SetReward(1.0f); // Reward for success
-            EndEpisode();
+            AddReward(1.0f); // Reward for success
+
+            // Immediately teleport the target to a new location
+            if (arenaManager != null)
+            {
+                target.localPosition = arenaManager.GetValidSpawnPosition();
+            }
+            else
+            {
+                target.localPosition = new Vector3(Random.Range(-50f, 50f), 2f, Random.Range(-50f, 50f));
+            }
+
+            // Recalibrate the distance tracker to the new target so the alpha reward doesn't break
+            previousDistance = Vector3.Distance(transform.position, target.position);
         }
     }
 }
